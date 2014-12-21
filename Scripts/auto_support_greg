@@ -12,7 +12,7 @@ local myhero = nil local onlyitems = false
 
 local monitor = client.screenSize.x/1600
 local F14 = drawMgr:CreateFont("F14","Tahoma",14*monitor,550*monitor) 
-local statusText = drawMgr:CreateText(10*monitor,545*monitor,-1,"Auto Support: ON - Hotkey: ''"..string.char(toggleKey).."''",F14) statusText.visible = false
+local statusText = drawMgr:CreateText(10*monitor,580*monitor,-1,"Auto Support: ON - Hotkey: ''"..string.char(toggleKey).."''",F14) statusText.visible = false
 
 function SupportTick(tick)
 	if not SleepCheck() then return end Sleep(200)
@@ -31,7 +31,7 @@ function SupportTick(tick)
 					if not needmeka or (needmeka and GetDistance2D(needmeka,me) <= 750) then
 						needmeka = v
 					end
-					if GetDistance2D(needmeka,me) <= 750 then
+					if GetDistance2D(needmeka,me) <= 750 and not me:IsSilenced() then
 						me:CastItem(meka.name) return
 					end
 				end
