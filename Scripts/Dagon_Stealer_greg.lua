@@ -1,5 +1,6 @@
 require("libs.Utils")
 require("libs.ScriptConfig")
+require("libs.TargetFind")
 
 config = ScriptConfig.new()
 --config:SetParameter("Hotkey", "48", config.TYPE_HOTKEY)
@@ -20,7 +21,7 @@ local F14         = drawMgr:CreateFont("F14","Tahoma",14*monitor,550*monitor)
 local debugText1  = drawMgr:CreateText(10*monitor,475*monitor,-1,"debug1",F14) debugText1.visible = true
 --local debugText2  = drawMgr:CreateText(10*monitor,460*monitor,-1,"debug2",F14) debugText2.visible = true
 --local debugText3  = drawMgr:CreateText(10*monitor,445*monitor,-1,"debug3",F14) debugText3.visible = true 
---Главная функция
+--??????? ???????
 function Tick(tick)
  
 if not client.connected or 
@@ -31,8 +32,7 @@ sleep = tick + 10
 
 local me = entityList:GetMyHero()
 
-if not me then return 
-
+if (not me) or (not me.alive) then return 
 end
        
 local dagon = me:FindDagon()
@@ -57,10 +57,10 @@ local enemy = entityList:GetEntities({type=LuaEntity.TYPE_HERO,alive=true,visibl
 
 debugText1.text=""..(fortune.level*75+purify.level*90+dmgD)*0.75
 
-for i = 1,#enemy do
-local v = enemy[i]
-if not v:IsIllusion() then
-if v.health > 0 and v:CanDie() and GetDistance2D(v,me) < 1000  then
+--for i = 1,#enemy do
+local v = targetFind:GetLowestEHP(1500,"magic")
+if v and not v:IsIllusion() then
+if v.health > 0 and v:CanDie()  then
 if not v:DoesHaveModifier("modifier_nyx_assassin_spiked_carapace") then
 
 --for fortune's end channel detection (debug)
@@ -72,7 +72,6 @@ fortunedmg=fortune.level*75
 else fortunedmg=0
 end
 
-
 --calculates raw dmg from purify flames if you could cast it on the current target
 if purify and purify.cd==0 and GetDistance2D(v,me) < purify.castRange  then
 purifydmg=purify.level*90
@@ -82,22 +81,52 @@ end
 
 
 
+
 --dagon only
 if dagon and dagon.cd==0 and GetDistance2D(v,me) < dagon.castRange and v.health < v:DamageTaken(dmgD, DAMAGE_MAGC, me) then
 me:SafeCastAbility(dagon,v, false)
+
+--fortunes only
+elseif v.health < v:DamageTaken(fortunedmg, DAMAGE_MAGC, me) then
+me:AttackMove(client.mousePosition,false)
 
 --fortunes + purify
 elseif v.health < v:DamageTaken(fortunedmg+purifydmg, DAMAGE_MAGC, me) then
 me:SafeCastAbility(purify,v, false)
 
 --fortunes + dagon
-elseif dagon and dagon.cd==0 and GetDistance2D(v,me) < 
-dagon.castRange and v.health < v:DamageTaken(dmgD+fortunedmg, DAMAGE_MAGC, me) then
+elseif dagon and dagon.cd==0 and GetDistance2D(v,me) < dagon.castRange and v.health < v:DamageTaken(dmgD+fortunedmg, DAMAGE_MAGC, me) then
 me:SafeCastAbility(dagon,v, false)
 
 --fortunes + purify + dagon
-elseif dagon and dagon.cd==0 and GetDistance2D(v,me) < dagon.castRange and GetDistance2D(v,me) < purify.castRange and relativeangle<0.05 and v.health < v:DamageTaken(dmgD+fortunedmg+purifydmg, DAMAGE_MAGC,me) then
+elseif dagon and dagon.cd==0 and GetDistance2D(v,me) < dagon.castRange and GetDistance2D(v,me) < purify.castRange and v.health < v:DamageTaken(dmgD+fortunedmg+purifydmg, DAMAGE_MAGC,me) and me.mana > (purify.manacost+dagon.manacost) then
 me:SafeCastAbility(dagon,v, false)
+
+--attempt to cast fortune upon flame detection
+elseif fortune and fortune.cd==0 and v:DoesHaveModifier("modifier_oracle_purifying_flames") and GetDistance2D(v,me) < fortune.castRange  then
+me:SafeCastAbility(fortune,v, false)
+
+
+elseif IsKeyDown(32) then 
+--v = targetFind:GetLowestEHP(fortune.castRange, magic)
+	 if v:DoesHaveModifier("modifier_oracle_purifying_flames") and fortunedmg~=0 then
+	 me:AttackMove(client.mousePosition,false)
+	 end
+	 if GetDistance2D(v,me)<purify.castRange and  GetDistance2D(v,me)>450 and fortunedmg~=0 and purify.dmg~=0 then
+	me:SafeCastAbility(purify,v, false)
+	end
+	if SleepCheck(pur) and GetDistance2D(v,me)<fortune.castRange and  GetDistance2D(v,me)<450 and fortune and fortune.cd==0 and purify.dmg~=0 and me.mana > (fortune.manacost+purify.manacost) then
+	me:SafeCastAbility(purify,v, false)
+	Sleep(50, pur)
+	end
+	 if SleepCheck(fort) and GetDistance2D(v,me)<fortune.castRange and fortunedmg==0 and fortune.cd==0 then
+	me:SafeCastAbility(fortune,v, false)
+	Sleep(50,fort)
+	end
+
+-- me:Move(client.mousePosition,false)
+
+
 
 
 --[[
@@ -133,7 +162,7 @@ end
 end	
 end
 
-end
+--end
 
 
 function Draw(one,two)
